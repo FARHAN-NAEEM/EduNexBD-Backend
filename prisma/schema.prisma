@@ -1,0 +1,357 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+  STAFF
+}
+
+// হাজিরার স্ট্যাটাস
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  LEAVE
+}
+
+// স্টুডেন্টের বর্তমান অবস্থা
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  PASSED_OUT
+  DROPOUT
+  SUSPENDED
+  TRANSFERRED
+}
+
+// পরীক্ষার ওভারঅল রেজাল্ট স্ট্যাটাস
+enum ResultStatus {
+  PASS
+  FAIL
+  WITHHELD
+}
+
+// --- USER & AUTHENTICATION ---
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(STUDENT)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  student Student?
+  teacher Teacher?
+
+  @@map("users")
+}
+
+// --- STUDENT FULL PROFILE ---
+model Student {
+  id        String  @id @default(uuid())
+  userId    String  @unique
+  studentId String  @unique
+  
+  // Basic Information
+  firstName  String
+  lastName   String
+  fullNameBn String?   // বাংলা নাম
+  rollNo     Int
+  gender     String?
+  dob        DateTime? // জন্মতারিখ
+  bloodGroup String?
+  religion   String?
+  nationality String?  @default("Bangladeshi")
+
+  // Academic Linkage
+  classId String
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Restrict)
+
+  sectionId String
+  section   Section @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+
+  session   String?  // শিক্ষাবর্ষ (যেমন: 2026-2027)
+  group     String?  // Science, Arts, Commerce
+  shift     String?  // Morning, Day
+  version   String?  @default("Bangla") // মাধ্যম: বাংলা/ইংরেজি
+
+  // Contact Information
+  mobile           String?
+  altMobile        String?
+  presentAddress   String?
+  permanentAddress String?
+  district         String?
+  upazila          String?
+
+  // Guardian Information
+  fatherName     String?
+  fatherMobile   String?
+  fatherOcc      String?
+  motherName     String?
+  motherMobile   String?
+  guardianName   String?
+  guardianRel    String?
+  guardianMobile String?
+  guardianIncome String?
+
+  // Verification & Media
+  birthCertNo String? @unique
+  nidNo       String? @unique
+  photoUrl    String? // ছবির লিংক
+  signUrl     String? // স্বাক্ষরের লিংক
+
+  // Status Control
+  status      StudentStatus @default(ACTIVE)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // রিলেশন
+  attendances Attendance[]
+  marks       Mark[]
+  results     Result[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([classId])
+  @@index([sectionId])
+  @@unique([classId, sectionId, rollNo]) // এক সেকশনে একই রোল দুইবার থাকতে পারবে না
+  @@map("students")
+}
+
+// --- TEACHER PROFILE ---
+model Teacher {
+  id          String  @id @default(uuid())
+  userId      String  @unique
+  employeeId  String  @unique
+  firstName   String
+  lastName    String
+  designation String
+  department  String?
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("teachers")
+}
+
+// --- ACADEMIC INFRASTRUCTURE ---
+model AcademicYear {
+  id        String   @id @default(uuid())
+  year      String   @unique
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+  
+  classes   Class[]
+  exams     Exam[]   // এই সেশনের সব পরীক্ষা
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("academic_years")
+}
+
+model Class {
+  id             String       @id @default(uuid())
+  name           String
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  sections    Section[]
+  subjects    Subject[]
+  students    Student[]
+  attendances Attendance[]
+  exams       Exam[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([academicYearId])
+  @@map("classes")
+}
+
+model Section {
+  id       String    @id @default(uuid())
+  name     String
+  classId  String
+  class    Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  students Student[]
+
+  attendances Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([classId])
+  @@map("sections")
+}
+
+model Subject {
+  id        String       @id @default(uuid())
+  name      String
+  code      String       @unique
+  classId   String
+  class     Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  
+  // Result Module Requirements
+  fullMarks Float        @default(100)
+  passMarks Float        @default(33)
+  
+  assignments Assignment[]
+  marks       Mark[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([classId])
+  @@map("subjects")
+}
+
+// --- TEACHER ASSIGNMENT ---
+model Assignment {
+  id        String  @id @default(uuid())
+  teacherId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@unique([teacherId, subjectId])
+  @@map("assignments")
+}
+
+// --- ATTENDANCE ---
+model Attendance {
+  id       String           @id @default(uuid())
+  date     DateTime         // হাজিরার তারিখ
+  status   AttendanceStatus // PRESENT, ABSENT, LATE, LEAVE
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  classId String
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  sectionId String
+  section   Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, studentId]) // একজন স্টুডেন্টের দিনে একটাই হাজিরা থাকবে
+  @@map("attendances")
+}
+
+// ==========================================
+//        RESULT MANAGEMENT SYSTEM
+// ==========================================
+
+// --- EXAM MODEL ---
+model Exam {
+  id             String       @id @default(uuid())
+  name           String       // e.g., Mid Term, Final Exam, Test Exam
+  
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  
+  classId        String?
+  class          Class?       @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  marks          Mark[]
+  results        Result[]
+
+  isPublished    Boolean      @default(false) // রেজাল্ট পাবলিশ কন্ট্রোল
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("exams")
+}
+
+// --- SUBJECT WISE MARKS MODEL ---
+model Mark {
+  id          String   @id @default(uuid())
+  
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  subjectId   String
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
+  examId      String
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  // Mark Components
+  written     Float    @default(0)
+  mcq         Float    @default(0)
+  practical   Float    @default(0)
+  assignment  Float    @default(0) // Optional, as per SDD
+  
+  total       Float    @default(0) // Auto calculated before saving
+
+  // Subject Result
+  grade       String?  // e.g., A+, B, F
+  gpa         Float?   // e.g., 5.0, 3.0, 0.0
+  isFail      Boolean  @default(false) // যদি passMarks এর নিচে পায়
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([studentId, subjectId, examId]) // এক পরীক্ষায় এক সাবজেক্টের মার্কস একবারই এন্ট্রি হবে
+  @@map("marks")
+}
+
+// --- OVERALL RESULT MODEL ---
+model Result {
+  id          String       @id @default(uuid())
+  
+  studentId   String
+  student     Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  examId      String
+  exam        Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  // Overall Performance
+  totalMarks  Float        @default(0)
+  gpa         Float        @default(0)
+  grade       String?      // Overall Final Grade
+  status      ResultStatus @default(FAIL) // PASS or FAIL
+  position    Int?         // Merit Position / Rank in Class
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([studentId, examId]) // এক পরীক্ষায় একজন স্টুডেন্টের একটাই ফাইনাল রেজাল্ট থাকবে
+  @@map("results")
+}
+
+// --- DYNAMIC GRADING SYSTEM ---
+model GradingSystem {
+  id          String   @id @default(uuid())
+  minMarks    Float    // e.g., 80
+  maxMarks    Float    // e.g., 100
+  grade       String   // e.g., A+
+  gpa         Float    // e.g., 5.0
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("grading_systems")
+}
