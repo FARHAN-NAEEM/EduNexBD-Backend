@@ -193,6 +193,7 @@ model Section {
   students Student[]
 
   attendances Attendance[]
+  exams       Exam[] // শাখার জন্য নির্দিষ্ট পরীক্ষা
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -208,9 +209,14 @@ model Subject {
   classId   String
   class     Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
   
-  // Result Module Requirements
-  fullMarks Float        @default(100)
-  passMarks Float        @default(33)
+  // ✅ DYNAMIC MARKS STRUCTURE
+  fullMarks      Float    @default(100)
+  passMarks      Float    @default(33)
+  
+  hasPractical   Boolean  @default(false) // প্র্যাকটিক্যাল আছে কি না?
+  writtenMarks   Float    @default(100)   // CQ (Written) মার্কস
+  mcqMarks       Float    @default(0)     // MCQ মার্কস
+  practicalMarks Float    @default(0)     // Practical মার্কস
   
   assignments Assignment[]
   marks       Mark[]
@@ -274,6 +280,9 @@ model Exam {
   classId        String?
   class          Class?       @relation(fields: [classId], references: [id], onDelete: Cascade)
 
+  sectionId      String?      // ✅ নতুন ফিল্ড: কোনো নির্দিষ্ট শাখার পরীক্ষা হলে
+  section        Section?     @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
   marks          Mark[]
   results        Result[]
 
@@ -309,12 +318,12 @@ model Mark {
   // Subject Result
   grade       String?  // e.g., A+, B, F
   gpa         Float?   // e.g., 5.0, 3.0, 0.0
-  isFail      Boolean  @default(false) // যদি passMarks এর নিচে পায়
+  isFail      Boolean  @default(false) // যদি passMarks এর নিচে পায়
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@unique([studentId, subjectId, examId]) // এক পরীক্ষায় এক সাবজেক্টের মার্কস একবারই এন্ট্রি হবে
+  @@unique([studentId, subjectId, examId]) // এক পরীক্ষায় এক সাবজেক্টের মার্কস একবারই এন্ট্রি হবে
   @@map("marks")
 }
 
@@ -338,7 +347,7 @@ model Result {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  @@unique([studentId, examId]) // এক পরীক্ষায় একজন স্টুডেন্টের একটাই ফাইনাল রেজাল্ট থাকবে
+  @@unique([studentId, examId]) // এক পরীক্ষায় একজন স্টুডেন্টের একটাই ফাইনাল রেজাল্ট থাকবে
   @@map("results")
 }
 

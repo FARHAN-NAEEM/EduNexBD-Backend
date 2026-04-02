@@ -1,17 +1,15 @@
 // src/academic/subjects/subjects.controller.ts
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get } from '@nestjs/common';
 import { SubjectsService } from './subjects.service';
-import { AuthGuard } from '@nestjs/passport';
-import { AdminGuard } from '../../auth/admin.guard';
+import { CreateSubjectDto } from './dto/subject.dto';
 
-@Controller('academic/subjects') // রাউট: /academic/subjects
-@UseGuards(AuthGuard('jwt'), AdminGuard) // শুধুমাত্র এডমিন এক্সেস
+@Controller('academic/subjects')
 export class SubjectsController {
   constructor(private readonly subjectsService: SubjectsService) {}
 
   @Post()
-  createSubject(@Body() body: { name: string; code: string; classId: string }) {
-    return this.subjectsService.createSubject(body.name, body.code, body.classId);
+  createSubject(@Body() dto: CreateSubjectDto) {
+    return this.subjectsService.createSubject(dto);
   }
 
   @Get()

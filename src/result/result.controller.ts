@@ -1,5 +1,5 @@
 // src/result/result.controller.ts
-import { Controller, Post, Body, Param } from '@nestjs/common';
+import { Controller, Post, Body, Param, Get } from '@nestjs/common';
 import { ResultService } from './result.service';
 import { CreateExamDto, EnterMarkDto } from './dto/result.dto';
 
@@ -10,6 +10,11 @@ export class ResultController {
   @Post('exam')
   createExam(@Body() createExamDto: CreateExamDto) {
     return this.resultService.createExam(createExamDto);
+  }
+
+  @Get('exams') // ✅ নতুন API যোগ করা হয়েছে
+  getAllExams() {
+    return this.resultService.getAllExams();
   }
 
   @Post('mark')
