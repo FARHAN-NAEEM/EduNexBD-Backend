@@ -1,7 +1,7 @@
 // src/academic/subjects/subjects.controller.ts
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, Param, Delete } from '@nestjs/common';
 import { SubjectsService } from './subjects.service';
-import { CreateSubjectDto } from './dto/subject.dto';
+import { CreateSubjectDto, UpdateSubjectDto } from './dto/subject.dto';
 
 @Controller('academic/subjects')
 export class SubjectsController {
@@ -15,5 +15,15 @@ export class SubjectsController {
   @Get()
   getAllSubjects() {
     return this.subjectsService.getAllSubjects();
+  }
+
+  @Patch(':id')
+  updateSubject(@Param('id') id: string, @Body() dto: UpdateSubjectDto) {
+    return this.subjectsService.updateSubject(id, dto);
+  }
+
+  @Delete(':id')
+  deleteSubject(@Param('id') id: string) {
+    return this.subjectsService.deleteSubject(id);
   }
 }

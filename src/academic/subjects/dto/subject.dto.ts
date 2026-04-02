@@ -14,7 +14,6 @@ export class CreateSubjectDto {
   @IsNotEmpty()
   classId: string;
 
-  // --- Dynamic Marks Fields ---
   @IsOptional()
   @IsBoolean()
   hasPractical?: boolean;
@@ -38,4 +37,16 @@ export class CreateSubjectDto {
   @IsOptional()
   @IsNumber()
   passMarks?: number;
+}
+
+export class UpdateSubjectDto {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() code?: string;
+  @IsOptional() @IsString() classId?: string;
+  @IsOptional() @IsBoolean() hasPractical?: boolean;
+  @IsOptional() @IsNumber() writtenMarks?: number;
+  @IsOptional() @IsNumber() mcqMarks?: number;
+  @IsOptional() @IsNumber() practicalMarks?: number;
+  @IsOptional() @IsNumber() fullMarks?: number;
+  @IsOptional() @IsNumber() passMarks?: number;
 }
